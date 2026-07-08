@@ -10,12 +10,14 @@ const options: swaggerJSDoc.Options = {
         "Ingliz tili o'quv platformasi uchun backend API hujjatlari. " +
         "Kurslar, darslar, testlar, sertifikatlar, to'lovlar, jonli darslar va boshqalar.",
     },
+
     servers: [
       {
-        url: "https://backend-platform-2.onrender.com/",
-        description: "Local server",
+        url: "https://backend-platform-2.onrender.com/api",
+        description: "Render production server",
       },
     ],
+
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -25,9 +27,14 @@ const options: swaggerJSDoc.Options = {
         },
       },
     },
-    security: [{ bearerAuth: [] }],
+
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
-  // Swagger izohlari route fayllarining tepasida JSDoc formatida yoziladi
+
   apis: ["./src/modules/**/*.routes.ts"],
 };
 
