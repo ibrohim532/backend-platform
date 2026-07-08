@@ -1,0 +1,371 @@
+// English Learning Platform - Database schema
+// Provider: Neon Postgres
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum CourseLevel {
+  ELEMENTARY
+  PRE_INTERMEDIATE
+  INTERMEDIATE
+  UPPER_INTERMEDIATE
+  IELTS
+  GRAMMAR
+  VOCABULARY
+  SPEAKING
+}
+
+enum MaterialType {
+  PDF
+  VOCABULARY_LIST
+  GRAMMAR_NOTES
+  HOMEWORK
+}
+
+enum TestType {
+  LESSON
+  FINAL
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  COURSE
+  SUBSCRIPTION
+}
+
+enum LivePlatform {
+  ZOOM
+  GOOGLE_MEET
+}
+
+enum NotificationType {
+  NEW_LESSON
+  NEW_TEST
+  ANNOUNCEMENT
+  QNA_ANSWER
+  PAYMENT
+}
+
+// ==================== USERS ====================
+
+model User {
+  id            String   @id @default(uuid())
+  fullName      String
+  email         String   @unique
+  phone         String?
+  password      String
+  role          Role     @default(STUDENT)
+  avatarUrl     String?
+  bio           String?  // o'qituvchi haqida ma'lumot uchun ham ishlatiladi
+  experience    String?  // faqat teacher uchun, masalan "5 yillik tajriba"
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  coursesTaught     Course[]        @relation("TeacherCourses")
+  enrollments       Enrollment[]
+  testResults       TestResult[]
+  certificates      Certificate[]
+  payments          Payment[]
+  notifications     Notification[]
+  questions         QnA[]           @relation("StudentQuestions")
+  answers           QnA[]           @relation("TeacherAnswers")
+  testimonials      Testimonial[]
+
+  @@map("users")
+}
+
+// ==================== COURSES ====================
+
+model Course {
+  id            String      @id @default(uuid())
+  title         String
+  description   String
+  level         CourseLevel
+  price         Decimal     @default(0) @db.Decimal(10, 2)
+  thumbnailUrl  String?
+  isPublished   Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  teacherId     String
+  teacher       User        @relation("TeacherCourses", fields: [teacherId], references: [id])
+
+  lessons       Lesson[]
+  tests         Test[]
+  enrollments   Enrollment[]
+  liveLessons   LiveLesson[]
+  qna           QnA[]
+  payments      Payment[]
+  certificates  Certificate[]
+
+  @@map("courses")
+}
+
+// ==================== LESSONS ====================
+
+model Lesson {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String?
+  audioUrl    String?
+  pdfUrl      String?  // konspekt
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  materials   Material[]
+  tests       Test[]
+  qna         QnA[]
+
+  @@map("lessons")
+}
+
+// ==================== MATERIALS ====================
+
+model Material {
+  id        String       @id @default(uuid())
+  title     String
+  type      MaterialType
+  fileUrl   String
+  createdAt DateTime     @default(now())
+
+  lessonId  String
+  lesson    Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("materials")
+}
+
+// ==================== TESTS ====================
+
+model Test {
+  id         String   @id @default(uuid())
+  title      String
+  type       TestType @default(LESSON)
+  passScore  Int      @default(60) // foizda o'tish balli
+  createdAt  DateTime @default(now())
+
+  lessonId   String?
+  lesson     Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  courseId   String?
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  questions  Question[]
+  results    TestResult[]
+
+  @@map("tests")
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  text          String
+  options       String[] // variantlar ro'yxati
+  correctIndex  Int      // to'g'ri javob indeksi
+  order         Int      @default(0)
+
+  testId        String
+  test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+model TestResult {
+  id              String   @id @default(uuid())
+  score           Int      // foizda
+  correctAnswers  Int
+  totalQuestions  Int
+  passed          Boolean
+  answers         Json?    // {questionId: chosenIndex}
+  createdAt       DateTime @default(now())
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  testId          String
+  test            Test     @relation(fields: [testId], references: [id])
+
+  @@map("test_results")
+}
+
+// ==================== ENROLLMENTS (Kurslarim / Progress) ====================
+
+model Enrollment {
+  id              String           @id @default(uuid())
+  progressPercent Int              @default(0)
+  status          EnrollmentStatus @default(ACTIVE)
+  enrolledAt      DateTime         @default(now())
+  completedAt     DateTime?
+
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+
+  courseId        String
+  course          Course           @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// ==================== CERTIFICATES ====================
+
+model Certificate {
+  id        String   @id @default(uuid())
+  fileUrl   String?  // generatsiya qilingan PDF havolasi
+  issuedAt  DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@map("certificates")
+}
+
+// ==================== PAYMENTS / PROMO ====================
+
+model Payment {
+  id          String        @id @default(uuid())
+  amount      Decimal       @db.Decimal(10, 2)
+  status      PaymentStatus @default(PENDING)
+  type        PaymentType   @default(COURSE)
+  provider    String?       // click, payme, stripe va hokazo
+  promoCode   String?
+  createdAt   DateTime      @default(now())
+
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+
+  courseId    String?
+  course      Course?       @relation(fields: [courseId], references: [id])
+
+  @@map("payments")
+}
+
+model PromoCode {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  discountPercent Int
+  isActive        Boolean  @default(true)
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@map("promo_codes")
+}
+
+// ==================== LIVE LESSONS ====================
+
+model LiveLesson {
+  id            String       @id @default(uuid())
+  title         String
+  platform      LivePlatform @default(ZOOM)
+  meetingLink   String
+  scheduledAt   DateTime
+  recordingUrl  String?
+  createdAt     DateTime     @default(now())
+
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("live_lessons")
+}
+
+// ==================== Q&A ====================
+
+model QnA {
+  id           String   @id @default(uuid())
+  question     String
+  answer       String?
+  answeredAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  studentId    String
+  student      User     @relation("StudentQuestions", fields: [studentId], references: [id])
+
+  teacherId    String?
+  teacher      User?    @relation("TeacherAnswers", fields: [teacherId], references: [id])
+
+  courseId     String?
+  course       Course?  @relation(fields: [courseId], references: [id])
+
+  lessonId     String?
+  lesson       Lesson?  @relation(fields: [lessonId], references: [id])
+
+  @@map("qna")
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String            @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ==================== TESTIMONIALS (O'quvchilar fikrlari) ====================
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  text      String
+  rating    Int      @default(5) // 1-5
+  isPublished Boolean @default(false) // admin tasdiqlashi kerak
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("testimonials")
+}
+
+// ==================== CONTACT ====================
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}
