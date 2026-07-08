@@ -9,34 +9,91 @@ const router = Router();
  * @swagger
  * tags:
  *   name: QnA
- *   description: "Savol-javob (O'quvchi savol yuboradi, O'qituvchi javob beradi)"
+ *   description: Savol-javob (O'quvchi savol yuboradi, O'qituvchi javob beradi)
  */
+
+/**
+ * @swagger
+ * /qna:
+ *   get:
+ *     summary: Barcha savol-javoblarni olish
+ *     tags: [QnA]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Savollar ro'yxati
+ */
+router.get(
+  "/",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const qna = await prisma.qnA.findMany({
+      include: {
+        student: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
+        teacher: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(qna);
+  })
+);
 
 /**
  * @swagger
  * /qna/course/{courseId}:
  *   get:
- *     summary: "Kursga tegishli barcha savol-javoblar"
+ *     summary: Kursga tegishli barcha savol-javoblar
  *     tags: [QnA]
  *     parameters:
  *       - in: path
  *         name: courseId
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     responses:
- *       200: { description: "Savol-javoblar ro'yxati" }
+ *       200:
+ *         description: Savollar ro'yxati
  */
 router.get(
   "/course/:courseId",
   asyncHandler(async (req, res) => {
     const qna = await prisma.qnA.findMany({
-      where: { courseId: req.params.courseId },
-      include: {
-        student: { select: { fullName: true, avatarUrl: true } },
-        teacher: { select: { fullName: true, avatarUrl: true } },
+      where: {
+        courseId: req.params.courseId,
       },
-      orderBy: { createdAt: "desc" },
+      include: {
+        student: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
+        teacher: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
+
     res.json(qna);
   })
 );
@@ -45,31 +102,44 @@ router.get(
  * @swagger
  * /qna:
  *   post:
- *     summary: "O'quvchi savol yuboradi"
+ *     summary: O'quvchi savol yuboradi
  *     tags: [QnA]
- *     security: [{ bearerAuth: [] }]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [question]
+ *             required:
+ *               - question
  *             properties:
- *               question: { type: string }
- *               courseId: { type: string }
- *               lessonId: { type: string }
+ *               question:
+ *                 type: string
+ *               courseId:
+ *                 type: string
+ *               lessonId:
+ *                 type: string
  *     responses:
- *       201: { description: "Savol yuborildi" }
+ *       201:
+ *         description: Savol yuborildi
  */
 router.post(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
     const { question, courseId, lessonId } = req.body;
+
     const qna = await prisma.qnA.create({
-      data: { question, courseId, lessonId, studentId: req.user!.id },
+      data: {
+        question,
+        courseId,
+        lessonId,
+        studentId: req.user!.id,
+      },
     });
+
     res.status(201).json(qna);
   })
 );
@@ -78,25 +148,30 @@ router.post(
  * @swagger
  * /qna/{id}/answer:
  *   put:
- *     summary: "O'qituvchi savolga javob beradi (bildirishnoma avtomatik yuboriladi)"
+ *     summary: O'qituvchi javob beradi
  *     tags: [QnA]
- *     security: [{ bearerAuth: [] }]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [answer]
+ *             required:
+ *               - answer
  *             properties:
- *               answer: { type: string }
+ *               answer:
+ *                 type: string
  *     responses:
- *       200: { description: "Javob berildi" }
+ *       200:
+ *         description: Javob berildi
  */
 router.put(
   "/:id/answer",
@@ -106,16 +181,22 @@ router.put(
     const { answer } = req.body;
 
     const qna = await prisma.qnA.update({
-      where: { id: req.params.id },
-      data: { answer, answeredAt: new Date(), teacherId: req.user!.id },
+      where: {
+        id: req.params.id,
+      },
+      data: {
+        answer,
+        answeredAt: new Date(),
+        teacherId: req.user!.id,
+      },
     });
 
-    // Talabaga bildirishnoma yuborish
     await prisma.notification.create({
       data: {
         userId: qna.studentId,
         title: "Savolingizga javob berildi",
-        message: "O'qituvchi sizning savolingizga javob berdi. Tekshirib ko'ring.",
+        message:
+          "O'qituvchi sizning savolingizga javob berdi. Tekshirib ko'ring.",
         type: "QNA_ANSWER",
       },
     });

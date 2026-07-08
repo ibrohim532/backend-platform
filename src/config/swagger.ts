@@ -11,12 +11,6 @@ const options: swaggerJSDoc.Options = {
         "Kurslar, darslar, testlar, sertifikatlar, to'lovlar, jonli darslar va boshqalar.",
     },
 
-    servers: [
-      {
-        url: "https://backend-platform-2.onrender.com/api",
-        description: "Render production server",
-      },
-    ],
 
     components: {
       securitySchemes: {
