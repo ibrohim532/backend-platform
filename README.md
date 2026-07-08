@@ -67,7 +67,7 @@ Bu admin, o'qituvchi va bitta namuna kurs yaratadi:
 npm run dev
 ```
 
-Server: `http://localhost:5000`
+Server: `https://backend-platform-2.onrender.com/api-docs/`
 Swagger hujjatlari: `http://localhost:5000/api-docs`
 
 ## Production build

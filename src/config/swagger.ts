@@ -12,7 +12,7 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:5000/api",
+        url: "https://backend-platform-2.onrender.com/",
         description: "Local server",
       },
     ],
