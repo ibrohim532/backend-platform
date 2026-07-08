@@ -121,3 +121,4 @@ prisma/
   qo'shish mumkin.
 - Barcha himoyalangan endpointlar uchun header: `Authorization: Bearer <token>`
 # backend-platform
+# backend-platform
